@@ -251,12 +251,12 @@
           <li>코어타임: 월~목 <b>10–16시</b>, 금 <b>10–11:30</b></li>
           <li>점심: <b>12–13시</b> 1시간 공제 (겹치는 만큼)</li>
           <li>출장: <b>8시간</b> 인정 (시간 입력 불필요)</li>
-          <li>공휴일·휴무: 그날 <b>의무시간</b> 자동 인정</li>
+          <li>공휴일·휴무: <b>8시간</b> 자동 인정</li>
           <li>저녁식사 시 <b>30분 공제</b></li>
           <li>휴가: <b>30분 단위</b> 사용</li>
           <li>인정 상한: <b>22시 이후 미인정</b></li>
         </ul>
-        <p class="note">기수는 6/22(월)을 1차 시작으로 14일마다 넘어갑니다.</p>
+        <p class="note">기수는 6/8(월)을 1차 시작으로 14일마다 넘어갑니다.</p>
       </div>
     </details>
 
@@ -298,7 +298,7 @@
   </div>
 
   <div id="tripNote" class="note-box hidden">출장은 <b>8시간 근로</b>로 인정됩니다. 별도 시간 입력은 필요 없어요.</div>
-  <div id="holNote" class="note-box hidden">공휴일·휴무일은 그날 <b>의무시간</b>이 자동으로 인정되어 채우지 않아도 됩니다.</div>
+  <div id="holNote" class="note-box hidden">공휴일·휴무일은 <b>8시간</b>이 자동으로 인정되어 채우지 않아도 됩니다.</div>
 
   <div class="computed">
     <span class="lab">인정 시간</span>
@@ -314,7 +314,7 @@
 <script>
 (function(){
   "use strict";
-  const ANCHOR = new Date(2026, 5, 22);       // 1차 시작 (월) 2026-06-22
+  const ANCHOR = new Date(2026, 5, 8);        // 1차 시작 (월) 2026-06-08
   const MS = 86400000;
   const TARGET = 56;
   const KEY = "coretime_v1";
@@ -363,10 +363,9 @@
   // ── per-day breakdown ──
   function breakdown(key, d){
     const rec = state.days[key];
-    const req = reqOf(d);
     if(!rec) return { credited:0, type:"empty" };
     if(rec.type === "trip")    return { credited:8, type:"trip" };
-    if(rec.type === "holiday") return { credited:req, type:"holiday" };
+    if(rec.type === "holiday") return { credited:8, type:"holiday" };
     let worked = 0;
     const a = parseHM(rec.in), b = parseHM(rec.out);
     if(a != null && b != null){
