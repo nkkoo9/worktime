@@ -214,16 +214,16 @@
       <div class="hero-label">누적 근로</div>
       <div class="hero-total">
         <span class="big num" id="totalH">0</span>
-        <span class="unit num">/ 56시간</span>
+        <span class="unit num">/ 80시간</span>
       </div>
-      <div class="hero-sub" id="heroSub">56시간 남음</div>
+      <div class="hero-sub" id="heroSub">80시간 남음</div>
       <div class="meter">
         <div class="meter-track">
           <div class="meter-fill" id="mFill"></div>
           <div class="meter-over" id="mOver"></div>
           <div class="meter-target" id="mTarget"></div>
         </div>
-        <div class="meter-scale num"><span>0</span><span>56시간</span></div>
+        <div class="meter-scale num"><span>0</span><span>80시간</span></div>
       </div>
     </section>
 
@@ -247,13 +247,14 @@
       <summary>제도 요약 <span class="chev">›</span></summary>
       <div class="panel-body">
         <ul>
-          <li>정산 단위: <b>2주 · 56시간</b> (월~목 6h, 금 4h)</li>
+          <li>정산 단위: <b>2주 80시간</b></li>
+          <li>일 최소 근로: 월~목 <b>6시간</b>, 금 <b>4시간</b></li>
           <li>코어타임: 월~목 <b>10–16시</b>, 금 <b>10–11:30</b></li>
           <li>점심: <b>12–13시</b> 1시간 공제 (겹치는 만큼)</li>
           <li>출장: <b>8시간</b> 인정 (시간 입력 불필요)</li>
           <li>공휴일·휴무: <b>8시간</b> 자동 인정</li>
           <li>저녁식사 시 <b>30분 공제</b></li>
-          <li>휴가: <b>30분 단위</b> 사용</li>
+          <li>휴가: <b>사용 시간대</b>로 계산 (점심 제외)</li>
           <li>인정 상한: <b>22시 이후 미인정</b></li>
         </ul>
         <p class="note">기수는 6/8(월)을 1차 시작으로 14일마다 넘어갑니다.</p>
@@ -269,7 +270,7 @@
   <div class="grabber"></div>
   <div class="sheet-head">
     <span class="date num" id="shDate">—</span>
-    <span class="req num" id="shReq">의무 6시간</span>
+    <span class="req num" id="shReq">최소 6시간</span>
   </div>
 
   <div class="seg" id="typeSeg">
@@ -320,7 +321,7 @@
   "use strict";
   const ANCHOR = new Date(2026, 5, 8);        // 1차 시작 (월) 2026-06-08
   const MS = 86400000;
-  const TARGET = 56;
+  const TARGET = 80;
   const KEY = "coretime_v1";
   const DOW = ["일","월","화","수","목","금","토"];
 
@@ -527,7 +528,7 @@
     const rec = state.days[k];
     const req = reqOf(d);
     document.getElementById("shDate").textContent = md(d)+" ("+DOW[d.getDay()]+")";
-    document.getElementById("shReq").textContent = "의무 "+req+"시간";
+    document.getElementById("shReq").textContent = "최소 "+req+"시간";
 
     const t = rec ? rec.type : "work";
     if(rec && rec.type === "work"){
