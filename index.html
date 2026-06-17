@@ -292,8 +292,12 @@
       <label class="toggle"><input type="checkbox" id="dinner"><span class="tk"></span></label>
     </div>
     <div class="field">
-      <span class="flabel">휴가<span class="fsub">30분 단위</span></span>
-      <div class="ctrl"><select id="vac"></select></div>
+      <span class="flabel">휴가 시작<span class="fsub">비운 시간대 입력</span></span>
+      <div class="ctrl"><input type="time" id="vacStart"></div>
+    </div>
+    <div class="field">
+      <span class="flabel">휴가 종료<span class="fsub" id="vacCalc">미사용</span></span>
+      <div class="ctrl"><input type="time" id="vacEnd"></div>
     </div>
   </div>
 
@@ -360,6 +364,21 @@
     return H+"시간 "+m+"분";
   }
 
+  // ── 휴가 시간 (시작~종료, 점심 12–13시 제외) ──
+  function vacHours(rec){
+    const a = parseHM(rec.vacStart), b = parseHM(rec.vacEnd);
+    if(a != null && b != null){
+      let v = b - a;
+      if(v < 0) v = 0;
+      if(v > 0 && state.settings.lunch){
+        v -= Math.max(0, Math.min(b, 13) - Math.max(a, 12)); // 점심 12–13시와 겹치는 만큼 제외
+      }
+      if(v < 0) v = 0;
+      return v;
+    }
+    return rec.vacation || 0; // 이전 방식(시간 수) 호환
+  }
+
   // ── per-day breakdown ──
   function breakdown(key, d){
     const rec = state.days[key];
@@ -380,7 +399,7 @@
         if(worked < 0) worked = 0;
       }
     }
-    const vac = rec.vacation || 0;
+    const vac = vacHours(rec);
     const credited = worked + vac;
     let type = "empty";
     if(worked > 0 && vac > 0) type = "work+vac";
@@ -477,17 +496,21 @@
       in: document.getElementById("inTime").value || "",
       out: document.getElementById("outTime").value || "",
       dinner: document.getElementById("dinner").checked,
-      vacation: parseFloat(document.getElementById("vac").value) || 0
+      vacStart: document.getElementById("vacStart").value || "",
+      vacEnd: document.getElementById("vacEnd").value || ""
     };
   }
 
   function isEmptyWork(rec){
-    return rec.type === "work" && !rec.in && !rec.out && !(rec.vacation>0);
+    return rec.type === "work" && !rec.in && !rec.out && vacHours(rec) === 0;
   }
 
   function updateComputed(){
     const d = parseEditDate();
     const tmp = readSheet();
+    const vh = (editType === "work") ? vacHours(tmp) : 0;
+    const vc = document.getElementById("vacCalc");
+    if(vc) vc.textContent = vh > 0 ? (fmt(vh)+" 사용") : "미사용";
     const prev = state.days[editKey];
     state.days[editKey] = isEmptyWork(tmp) ? undefined : tmp;
     if(state.days[editKey] === undefined) delete state.days[editKey];
@@ -511,7 +534,8 @@
       document.getElementById("inTime").value = rec.in || "";
       document.getElementById("outTime").value = rec.out || "";
       document.getElementById("dinner").checked = !!rec.dinner;
-      document.getElementById("vac").value = (rec.vacation || 0);
+      document.getElementById("vacStart").value = rec.vacStart || "";
+      document.getElementById("vacEnd").value = rec.vacEnd || "";
     } else {
       // prefill an unset work day with exactly the required span
       const startStr = "10:00";
@@ -519,7 +543,8 @@
       document.getElementById("inTime").value = rec ? "" : startStr;
       document.getElementById("outTime").value = rec ? "" : (String(endH).padStart(2,"0")+":00");
       document.getElementById("dinner").checked = false;
-      document.getElementById("vac").value = "0";
+      document.getElementById("vacStart").value = "";
+      document.getElementById("vacEnd").value = "";
     }
     setType(t);
     document.getElementById("lunchHint").style.display = state.settings.lunch ? "block" : "none";
@@ -534,16 +559,6 @@
     editKey = null;
   }
 
-  // ── vacation options 0 .. 8 (0.5 step) ──
-  (function buildVac(){
-    const sel = document.getElementById("vac");
-    const o0 = document.createElement("option"); o0.value="0"; o0.textContent="사용 안 함"; sel.appendChild(o0);
-    for(let h=0.5; h<=8.0001; h+=0.5){
-      const o = document.createElement("option");
-      o.value = h; o.textContent = fmt(h); sel.appendChild(o);
-    }
-  })();
-
   // ── events ──
   document.getElementById("prev").addEventListener("click", () => { if(pIndex>0){ pIndex--; render(); } });
   document.getElementById("next").addEventListener("click", () => { pIndex++; render(); });
@@ -551,7 +566,7 @@
 
   document.querySelectorAll("#typeSeg button").forEach(b =>
     b.addEventListener("click", () => setType(b.dataset.type)));
-  ["inTime","outTime","vac"].forEach(id =>
+  ["inTime","outTime","vacStart","vacEnd"].forEach(id =>
     document.getElementById(id).addEventListener("input", updateComputed));
   document.getElementById("dinner").addEventListener("change", updateComputed);
 
