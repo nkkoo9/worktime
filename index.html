@@ -186,6 +186,7 @@
   .computed{display:flex;align-items:baseline;justify-content:space-between;margin:20px 0 4px;padding-top:16px;border-top:1px solid var(--line);}
   .computed .lab{font-size:13px;color:var(--muted);font-weight:600;letter-spacing:.04em;}
   .computed .val{font-size:24px;font-weight:300;letter-spacing:-.02em;}
+  .cap-note{font-size:12.5px;color:var(--muted);text-align:right;margin-top:6px;line-height:1.5;}
 
   .actions{display:flex;gap:10px;margin-top:18px;}
   .btn{flex:1;border:none;border-radius:13px;padding:15px;font-family:inherit;font-size:16px;font-weight:600;cursor:pointer;transition:transform .1s,opacity .15s;}
@@ -249,6 +250,7 @@
         <ul>
           <li>정산 단위: <b>2주 80시간</b></li>
           <li>일 최소 근로: 월~목 <b>6시간</b>, 금 <b>4시간</b></li>
+          <li>일 최대 인정: <b>9시간</b> (초과는 결재 승인 시 인정)</li>
           <li>코어타임: 월~목 <b>10–16시</b>, 금 <b>10–11:30</b></li>
           <li>점심: <b>12–13시</b> 1시간 공제 (겹치는 만큼)</li>
           <li>출장: <b>8시간</b> 인정 (시간 입력 불필요)</li>
@@ -293,6 +295,10 @@
       <label class="toggle"><input type="checkbox" id="dinner"><span class="tk"></span></label>
     </div>
     <div class="field">
+      <span class="flabel">초과근무 승인<span class="fsub">결재 승인 시 9시간 초과분 인정</span></span>
+      <label class="toggle"><input type="checkbox" id="approval"><span class="tk"></span></label>
+    </div>
+    <div class="field">
       <span class="flabel">휴가 시작<span class="fsub">비운 시간대 입력</span></span>
       <div class="ctrl"><input type="time" id="vacStart"></div>
     </div>
@@ -309,6 +315,7 @@
     <span class="lab">인정 시간</span>
     <span class="val num" id="shComputed">0시간</span>
   </div>
+  <div class="cap-note num hidden" id="capNote"></div>
 
   <div class="actions">
     <button class="btn btn-clear" id="clearBtn">지우기</button>
@@ -386,7 +393,7 @@
     if(!rec) return { credited:0, type:"empty" };
     if(rec.type === "trip")    return { credited:8, type:"trip" };
     if(rec.type === "holiday") return { credited:8, type:"holiday" };
-    let worked = 0;
+    let worked = 0, workedRaw = 0, capped = false;
     const a = parseHM(rec.in), b = parseHM(rec.out);
     if(a != null && b != null){
       const start = a, end = Math.min(b, 22);
@@ -399,6 +406,8 @@
         if(rec.dinner) worked -= 0.5;
         if(worked < 0) worked = 0;
       }
+      workedRaw = worked;
+      if(!rec.approval && worked > 9){ worked = 9; capped = true; } // 하루 인정 9시간 상한 (결재 승인 시 해제)
     }
     const vac = vacHours(rec);
     const credited = worked + vac;
@@ -406,7 +415,7 @@
     if(worked > 0 && vac > 0) type = "work+vac";
     else if(worked > 0) type = "work";
     else if(vac > 0) type = "vac";
-    return { credited, type, worked, vac };
+    return { credited, type, worked, workedRaw, vac, capped };
   }
 
   function typeLabel(t){
@@ -497,6 +506,7 @@
       in: document.getElementById("inTime").value || "",
       out: document.getElementById("outTime").value || "",
       dinner: document.getElementById("dinner").checked,
+      approval: document.getElementById("approval").checked,
       vacStart: document.getElementById("vacStart").value || "",
       vacEnd: document.getElementById("vacEnd").value || ""
     };
@@ -515,10 +525,19 @@
     const prev = state.days[editKey];
     state.days[editKey] = isEmptyWork(tmp) ? undefined : tmp;
     if(state.days[editKey] === undefined) delete state.days[editKey];
-    const c = breakdown(editKey, d).credited;
-    // restore (don't persist until save)
+    const bd = breakdown(editKey, d);
     if(prev) state.days[editKey] = prev; else delete state.days[editKey];
-    document.getElementById("shComputed").textContent = fmt(c);
+    document.getElementById("shComputed").textContent = fmt(bd.credited);
+    const note = document.getElementById("capNote");
+    if(bd.capped){
+      note.textContent = "실근무 "+fmt(bd.workedRaw)+" · 9시간만 인정 (승인 시 전체 인정)";
+      note.classList.remove("hidden");
+    } else if(editType === "work" && bd.workedRaw > 9 && tmp.approval){
+      note.textContent = "실근무 "+fmt(bd.workedRaw)+" · 초과근무 승인으로 전체 인정";
+      note.classList.remove("hidden");
+    } else {
+      note.classList.add("hidden");
+    }
   }
 
   function parseEditDate(){ const p = editKey.split("-"); return new Date(+p[0], +p[1]-1, +p[2]); }
@@ -535,6 +554,7 @@
       document.getElementById("inTime").value = rec.in || "";
       document.getElementById("outTime").value = rec.out || "";
       document.getElementById("dinner").checked = !!rec.dinner;
+      document.getElementById("approval").checked = !!rec.approval;
       document.getElementById("vacStart").value = rec.vacStart || "";
       document.getElementById("vacEnd").value = rec.vacEnd || "";
     } else {
@@ -544,6 +564,7 @@
       document.getElementById("inTime").value = rec ? "" : startStr;
       document.getElementById("outTime").value = rec ? "" : (String(endH).padStart(2,"0")+":00");
       document.getElementById("dinner").checked = false;
+      document.getElementById("approval").checked = false;
       document.getElementById("vacStart").value = "";
       document.getElementById("vacEnd").value = "";
     }
@@ -570,6 +591,7 @@
   ["inTime","outTime","vacStart","vacEnd"].forEach(id =>
     document.getElementById(id).addEventListener("input", updateComputed));
   document.getElementById("dinner").addEventListener("change", updateComputed);
+  document.getElementById("approval").addEventListener("change", updateComputed);
 
   document.getElementById("saveBtn").addEventListener("click", async () => {
     const rec = readSheet();
