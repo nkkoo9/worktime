@@ -20,6 +20,7 @@
     --track:#E7E4DA;
     --accent:#2B4A5A;
     --accent-soft:#7C9AA7;
+    --warn:#B4532A;
     --shadow:0 1px 2px rgba(33,31,26,.04), 0 8px 24px rgba(33,31,26,.06);
   }
   @media (prefers-color-scheme: dark){
@@ -33,6 +34,7 @@
       --track:#2A2823;
       --accent:#85AEBE;
       --accent-soft:#4E6E7C;
+      --warn:#E3936B;
       --shadow:0 1px 2px rgba(0,0,0,.3), 0 8px 24px rgba(0,0,0,.4);
     }
   }
@@ -80,6 +82,7 @@
   .hero-total .unit{font-size:16px;color:var(--muted);font-weight:400;}
   .hero-sub{margin-top:10px;font-size:14px;color:var(--accent);font-weight:500;}
   .hero-sub.met{color:var(--accent);}
+  .hero-warn{margin-top:4px;font-size:13px;color:var(--warn);font-weight:500;}
 
   .meter{margin-top:20px;}
   .meter-track{position:relative;height:12px;background:var(--track);border-radius:999px;overflow:hidden;}
@@ -113,6 +116,7 @@
   .day-hours{flex:0 0 auto;font-size:15px;font-weight:500;letter-spacing:-.01em;}
   .day-hours.empty{color:var(--faint);font-weight:400;}
   .today-tag{font-size:10px;color:var(--accent);font-weight:700;letter-spacing:.04em;margin-left:6px;}
+  .day-type .warn{display:block;margin-top:3px;font-size:12px;color:var(--warn);font-weight:500;line-height:1.35;}
 
   /* ── panels ── */
   details.panel{margin-top:14px;background:var(--card);border:1px solid var(--line);border-radius:16px;overflow:hidden;scroll-margin-top:calc(env(safe-area-inset-top) + 76px);}
@@ -166,9 +170,10 @@
     background:var(--paper);border-radius:22px 22px 0 0;
     box-shadow:0 -8px 40px rgba(20,18,12,.18);
     transform:translateY(110%);transition:transform .3s cubic-bezier(.22,.61,.36,1);
-    padding:8px 18px calc(env(safe-area-inset-bottom) + 18px);
+    padding:8px 18px 0;
     max-height:90vh;overflow-y:auto;
   }
+  .sheet-foot{position:sticky;bottom:0;display:flow-root;margin:0 -18px;padding:0 18px calc(env(safe-area-inset-bottom) + 18px);background:var(--paper);} /* 인정 시간·저장은 항상 보이게 */
   .sheet.show{transform:translateY(0);}
   .grabber{width:38px;height:4px;background:var(--line);border-radius:2px;margin:6px auto 14px;}
   .sheet-head{display:flex;align-items:baseline;justify-content:space-between;margin-bottom:18px;}
@@ -203,6 +208,8 @@
   .computed .lab{font-size:13px;color:var(--muted);font-weight:600;letter-spacing:.04em;}
   .computed .val{font-size:24px;font-weight:300;letter-spacing:-.02em;}
   .cap-note{font-size:12.5px;color:var(--muted);text-align:right;margin-top:6px;line-height:1.5;}
+  .warn-box{margin-top:12px;padding:12px 14px;border-radius:12px;background:color-mix(in srgb, var(--warn) 10%, transparent);color:var(--warn);font-size:13.5px;line-height:1.6;white-space:pre-line;}
+  .clr{border:none;background:none;padding:0 0 0 8px;color:var(--accent);font-family:inherit;font-size:12px;font-weight:600;cursor:pointer;}
 
   .actions{display:flex;gap:10px;margin-top:18px;}
   .btn{flex:1;border:none;border-radius:13px;padding:15px;font-family:inherit;font-size:16px;font-weight:600;cursor:pointer;transition:transform .1s,opacity .15s;}
@@ -234,6 +241,7 @@
         <span class="unit num">/ 80시간</span>
       </div>
       <div class="hero-sub" id="heroSub">80시간 남음</div>
+      <div class="hero-warn hidden" id="heroWarn"></div>
       <div class="meter">
         <div class="meter-track">
           <div class="meter-fill" id="mFill"></div>
@@ -305,7 +313,9 @@
           <li>공휴일·휴무: <b>8시간</b> 자동 인정</li>
           <li>저녁식사 시 <b>30분 공제</b></li>
           <li>휴가: <b>사용 시간대</b>로 계산 (점심 제외)</li>
+          <li>공무외출: <b>근무로 인정</b> (출퇴근과 겹치는 시간은 한 번만)</li>
           <li>인정 상한: <b>22시 이후 미인정</b></li>
+          <li>경고: <b>일 최소 근로 미달</b>, <b>코어타임 공백</b> (점심 12–13시 제외, 휴가·공무외출 시간은 채운 것으로 봄)</li>
         </ul>
         <p class="note">기수는 6/8(월)을 1차 시작으로 14일마다 넘어갑니다.</p>
       </div>
@@ -351,23 +361,34 @@
       <div class="ctrl"><input type="time" id="vacStart"></div>
     </div>
     <div class="field">
-      <span class="flabel">휴가 종료<span class="fsub" id="vacCalc">미사용</span></span>
+      <span class="flabel">휴가 종료<span class="fsub"><span id="vacCalc">미사용</span><button class="clr hidden" data-clear="vacStart,vacEnd">비우기</button></span></span>
       <div class="ctrl"><input type="time" id="vacEnd"></div>
+    </div>
+    <div class="field">
+      <span class="flabel">공무외출 시작<span class="fsub">근무로 인정 · 출퇴근과 겹치면 한 번만</span></span>
+      <div class="ctrl"><input type="time" id="outingStart"></div>
+    </div>
+    <div class="field">
+      <span class="flabel">공무외출 종료<span class="fsub"><span id="outingCalc">미사용</span><button class="clr hidden" data-clear="outingStart,outingEnd">비우기</button></span></span>
+      <div class="ctrl"><input type="time" id="outingEnd"></div>
     </div>
   </div>
 
   <div id="tripNote" class="note-box hidden">출장은 <b>8시간 근로</b>로 인정됩니다. 별도 시간 입력은 필요 없어요.</div>
   <div id="holNote" class="note-box hidden">공휴일·휴무일은 <b>8시간</b>이 자동으로 인정되어 채우지 않아도 됩니다.</div>
 
-  <div class="computed">
-    <span class="lab">인정 시간</span>
-    <span class="val num" id="shComputed">0시간</span>
-  </div>
-  <div class="cap-note num hidden" id="capNote"></div>
+  <div class="sheet-foot">
+    <div class="computed">
+      <span class="lab">인정 시간</span>
+      <span class="val num" id="shComputed">0시간</span>
+    </div>
+    <div class="cap-note num hidden" id="capNote"></div>
+    <div class="warn-box hidden" id="warnBox"></div>
 
-  <div class="actions">
-    <button class="btn btn-clear" id="clearBtn">지우기</button>
-    <button class="btn btn-save" id="saveBtn">저장</button>
+    <div class="actions">
+      <button class="btn btn-clear" id="clearBtn">지우기</button>
+      <button class="btn btn-save" id="saveBtn">저장</button>
+    </div>
   </div>
 </div>
 
@@ -382,7 +403,7 @@
   const KEY = "coretime_v1";
   const SNAP_KEY = KEY + "_snap";             // 자동 사본 [{at, why, ver, raw}]
   const META_KEY = KEY + "_meta";             // { ver, lastExport }
-  const VERSION = "v2";                       // 배포할 때마다 올림 → 새 버전이 처음 열릴 때 직전 기록을 자동 사본으로 남김
+  const VERSION = "v3";                       // 배포할 때마다 올림 → 새 버전이 처음 열릴 때 직전 기록을 자동 사본으로 남김
   const DOW = ["일","월","화","수","목","금","토"];
 
   let state = { settings:{ lunch:true }, days:{} };
@@ -443,25 +464,49 @@
     return rec.vacation || 0; // 이전 방식(시간 수) 호환
   }
 
+  // ── 시간 구간 (시 단위 [시작, 끝]) ──
+  function span(s, e, cap){
+    const a = parseHM(s), b = parseHM(e);
+    if(a == null || b == null) return null;
+    const end = (cap == null) ? b : Math.min(b, cap);
+    return end > a ? [a, end] : null;
+  }
+  function union(list){
+    const out = [];
+    list.filter(Boolean).map(x => x.slice()).sort((x, y) => x[0] - y[0]).forEach(x => {
+      const last = out[out.length-1];
+      if(last && x[0] <= last[1]) last[1] = Math.max(last[1], x[1]); else out.push(x);
+    });
+    return out;
+  }
+  function overlap(list, a, b){ return list.reduce((t, x) => t + Math.max(0, Math.min(x[1], b) - Math.max(x[0], a)), 0); }
+  function gaps(a, b, list){ // [a, b] 중 list(정렬·병합된 구간)가 덮지 않는 부분
+    const out = [];
+    let cur = a;
+    list.forEach(x => {
+      if(x[1] <= cur || x[0] >= b) return;
+      if(x[0] > cur) out.push([cur, x[0]]);
+      cur = Math.max(cur, x[1]);
+    });
+    if(cur < b) out.push([cur, b]);
+    return out.filter(x => x[1] - x[0] > 1e-6);
+  }
+  function hm(h){ const t = Math.round(h*60); return Math.floor(t/60)+":"+String(t%60).padStart(2,"0"); }
+
   // ── per-day breakdown ──
-  function breakdown(key, d){
-    const rec = state.days[key];
+  function breakdown(key, d){ return calc(state.days[key]); }
+  function calc(rec){
     if(!rec) return { credited:0, type:"empty" };
     if(rec.type === "trip")    return { credited:8, type:"trip" };
     if(rec.type === "holiday") return { credited:8, type:"holiday" };
     let worked = 0, workedRaw = 0, capped = false;
-    const a = parseHM(rec.in), b = parseHM(rec.out);
-    if(a != null && b != null){
-      const start = a, end = Math.min(b, 22);
-      worked = end - start;
+    const office = span(rec.in, rec.out, 22), outing = span(rec.outingStart, rec.outingEnd, 22);
+    const work = union([office, outing]); // 출퇴근 ∪ 공무외출 (겹치는 시간은 한 번만)
+    if(work.length){
+      worked = work.reduce((t, x) => t + x[1] - x[0], 0);
+      if(state.settings.lunch) worked -= overlap(work, 12, 13); // 점심 12–13시와 겹치는 만큼 공제
+      if(rec.dinner) worked -= 0.5;
       if(worked < 0) worked = 0;
-      if(worked > 0){
-        if(state.settings.lunch){
-          worked -= Math.max(0, Math.min(end, 13) - Math.max(start, 12)); // 점심 12–13시와 겹치는 만큼 공제
-        }
-        if(rec.dinner) worked -= 0.5;
-        if(worked < 0) worked = 0;
-      }
       workedRaw = worked;
       if(!rec.approval && worked > 9){ worked = 9; capped = true; } // 하루 인정 9시간 상한 (결재 승인 시 해제)
     }
@@ -471,11 +516,31 @@
     if(worked > 0 && vac > 0) type = "work+vac";
     else if(worked > 0) type = "work";
     else if(vac > 0) type = "vac";
-    return { credited, type, worked, workedRaw, vac, capped };
+    return { credited, type, worked, workedRaw, vac, capped, office, outing };
   }
 
-  function typeLabel(t){
-    return { trip:"출장", holiday:"공휴일", "work":"근무", "vac":"휴가", "work+vac":"근무 + 휴가", empty:"" }[t] || "";
+  function typeLabel(bd){
+    if(bd.type === "trip") return "출장";
+    if(bd.type === "holiday") return "공휴일";
+    const p = [];
+    if(bd.worked > 0 && bd.office) p.push("근무");
+    if(bd.worked > 0 && bd.outing) p.push("공무외출");
+    if(bd.vac > 0) p.push("휴가");
+    return p.join(" + ");
+  }
+
+  // ── 경고: 일 최소 근로 · 코어타임 ──
+  function coreOf(d){ const wd = d.getDay(); if(wd===5) return [[10, 11.5]]; if(wd>=1 && wd<=4) return [[10, 12], [13, 16]]; return []; } // 점심 12–13시 제외
+  function issues(rec, d, bd){
+    if(!rec || rec.type !== "work" || bd.type === "empty") return [];
+    const out = [], req = reqOf(d);
+    if(bd.credited < req - 1e-9) out.push({ short:"최소 "+fmt(req - bd.credited)+" 부족", long:"일 최소 "+req+"시간 중 "+fmt(req - bd.credited)+" 부족" });
+    const vac = span(rec.vacStart, rec.vacEnd);
+    if(!vac && rec.vacation > 0) return out; // 이전 방식 휴가(시간 수만 있음)는 시간대를 몰라 코어타임 점검 생략
+    const g = [];
+    coreOf(d).forEach(c => g.push(...gaps(c[0], c[1], union([bd.office, bd.outing, vac]))));
+    if(g.length) out.push({ short:"코어타임 공백", long:"코어타임 공백 "+g.map(x => hm(x[0])+"–"+hm(x[1])).join(", ") });
+    return out;
   }
 
   // ── render ──
@@ -486,8 +551,12 @@
     document.getElementById("rangeLabel").textContent = md(s)+"("+DOW[s.getDay()]+") – "+md(e)+"("+DOW[e.getDay()]+")";
     document.getElementById("prev").disabled = pIndex <= 0;
 
-    let total = 0;
-    days.forEach((d,i) => { total += breakdown(keyOf(d), d).credited; });
+    let total = 0, warnDays = 0;
+    days.forEach(d => {
+      const k = keyOf(d), bd = breakdown(k, d);
+      total += bd.credited;
+      if(issues(state.days[k], d, bd).length) warnDays++;
+    });
 
     document.getElementById("totalH").textContent = (Math.round(total*100)/100).toString().replace(/\.0+$/,"");
     const sub = document.getElementById("heroSub");
@@ -497,6 +566,9 @@
     } else {
       sub.textContent = fmt(TARGET - total) + " 남음";
     }
+    const hw = document.getElementById("heroWarn");
+    hw.textContent = warnDays ? "확인이 필요한 날 "+warnDays+"일" : "";
+    hw.classList.toggle("hidden", !warnDays);
 
     const cap = TARGET * 1.25;
     const pct = Math.min(total, TARGET) / cap * 100;
@@ -528,10 +600,12 @@
         const isToday = k === tKey;
         let typeHtml;
         if(isToday){
-          typeHtml = '<span class="today-mark">오늘</span>' + (bd.type!=="empty" ? ' · '+typeLabel(bd.type) : '');
+          typeHtml = '<span class="today-mark">오늘</span>' + (bd.type!=="empty" ? ' · '+typeLabel(bd) : '');
         } else {
-          typeHtml = (bd.type!=="empty") ? '<span class="dot"></span>'+typeLabel(bd.type) : '';
+          typeHtml = (bd.type!=="empty") ? '<span class="dot"></span>'+typeLabel(bd) : '';
         }
+        const iss = issues(state.days[k], d, bd);
+        if(iss.length) typeHtml += '<span class="warn">'+iss.map(x => x.short).join(" · ")+'</span>';
         btn.innerHTML =
           '<span class="day-date"><span class="d num">'+md(d)+'</span><span class="dow">('+DOW[d.getDay()]+')</span></span>'+
           '<span class="day-type">'+typeHtml+'</span>'+
@@ -564,12 +638,14 @@
       dinner: document.getElementById("dinner").checked,
       approval: document.getElementById("approval").checked,
       vacStart: document.getElementById("vacStart").value || "",
-      vacEnd: document.getElementById("vacEnd").value || ""
+      vacEnd: document.getElementById("vacEnd").value || "",
+      outingStart: document.getElementById("outingStart").value || "",
+      outingEnd: document.getElementById("outingEnd").value || ""
     };
   }
 
   function isEmptyWork(rec){
-    return rec.type === "work" && !rec.in && !rec.out && vacHours(rec) === 0;
+    return rec.type === "work" && !rec.in && !rec.out && !rec.outingStart && !rec.outingEnd && vacHours(rec) === 0;
   }
 
   function updateComputed(){
@@ -578,11 +654,17 @@
     const vh = (editType === "work") ? vacHours(tmp) : 0;
     const vc = document.getElementById("vacCalc");
     if(vc) vc.textContent = vh > 0 ? (fmt(vh)+" 사용") : "미사용";
-    const prev = state.days[editKey];
-    state.days[editKey] = isEmptyWork(tmp) ? undefined : tmp;
-    if(state.days[editKey] === undefined) delete state.days[editKey];
-    const bd = breakdown(editKey, d);
-    if(prev) state.days[editKey] = prev; else delete state.days[editKey];
+    const rec = isEmptyWork(tmp) ? null : tmp;
+    const bd = calc(rec);
+    const oc = document.getElementById("outingCalc");
+    if(editType === "work" && bd.outing){
+      const add = bd.workedRaw - calc(Object.assign({}, tmp, { outingStart:"", outingEnd:"" })).workedRaw;
+      oc.textContent = add > 1e-9 ? ("근무 +"+fmt(add)) : "출퇴근 시간과 겹침";
+    } else {
+      oc.textContent = "미사용";
+    }
+    document.querySelectorAll("#workFields .clr").forEach(b =>
+      b.classList.toggle("hidden", b.dataset.clear.split(",").every(id => !document.getElementById(id).value)));
     document.getElementById("shComputed").textContent = fmt(bd.credited);
     const note = document.getElementById("capNote");
     if(bd.capped){
@@ -594,6 +676,10 @@
     } else {
       note.classList.add("hidden");
     }
+    const iss = (editType === "work") ? issues(rec, d, bd) : [];
+    const wb = document.getElementById("warnBox");
+    wb.textContent = iss.map(x => x.long).join("\n");
+    wb.classList.toggle("hidden", !iss.length);
   }
 
   function parseEditDate(){ return dateOf(editKey); }
@@ -613,6 +699,8 @@
       document.getElementById("approval").checked = !!rec.approval;
       document.getElementById("vacStart").value = rec.vacStart || "";
       document.getElementById("vacEnd").value = rec.vacEnd || "";
+      document.getElementById("outingStart").value = rec.outingStart || "";
+      document.getElementById("outingEnd").value = rec.outingEnd || "";
     } else {
       // prefill an unset work day with exactly the required span
       const startStr = "10:00";
@@ -623,6 +711,8 @@
       document.getElementById("approval").checked = false;
       document.getElementById("vacStart").value = "";
       document.getElementById("vacEnd").value = "";
+      document.getElementById("outingStart").value = "";
+      document.getElementById("outingEnd").value = "";
     }
     setType(t);
     document.getElementById("lunchHint").style.display = state.settings.lunch ? "block" : "none";
@@ -775,8 +865,12 @@
 
   document.querySelectorAll("#typeSeg button").forEach(b =>
     b.addEventListener("click", () => setType(b.dataset.type)));
-  ["inTime","outTime","vacStart","vacEnd"].forEach(id =>
+  ["inTime","outTime","vacStart","vacEnd","outingStart","outingEnd"].forEach(id =>
     document.getElementById(id).addEventListener("input", updateComputed));
+  document.querySelectorAll("#workFields .clr").forEach(b => b.addEventListener("click", () => {
+    b.dataset.clear.split(",").forEach(id => { document.getElementById(id).value = ""; });
+    updateComputed();
+  }));
   document.getElementById("dinner").addEventListener("change", updateComputed);
   document.getElementById("approval").addEventListener("change", updateComputed);
 
