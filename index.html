@@ -115,7 +115,7 @@
   .today-tag{font-size:10px;color:var(--accent);font-weight:700;letter-spacing:.04em;margin-left:6px;}
 
   /* ── panels ── */
-  details.panel{margin-top:14px;background:var(--card);border:1px solid var(--line);border-radius:16px;overflow:hidden;}
+  details.panel{margin-top:14px;background:var(--card);border:1px solid var(--line);border-radius:16px;overflow:hidden;scroll-margin-top:calc(env(safe-area-inset-top) + 76px);}
   details.panel summary{
     list-style:none;cursor:pointer;padding:15px 16px;font-size:14px;font-weight:600;
     display:flex;align-items:center;justify-content:space-between;color:var(--ink);
@@ -126,7 +126,7 @@
   .panel-body{padding:0 16px 16px;font-size:13.5px;color:var(--muted);line-height:1.7;}
   .panel-body .row{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:8px 0;border-top:1px solid var(--line);}
   .panel-body .row:first-child{border-top:none;}
-  .panel-body label.f{color:var(--ink);font-weight:500;}
+  .panel-body .f{color:var(--ink);font-weight:500;}
   .panel-body .note{margin-top:10px;font-size:12.5px;color:var(--faint);line-height:1.6;}
   .panel-body ul{margin:4px 0 0;padding-left:18px;}
   .panel-body li{margin:5px 0;}
@@ -140,6 +140,22 @@
   select{padding-right:28px;background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'><path d='M3 4.5L6 7.5L9 4.5' stroke='%237E7A6F' stroke-width='1.4' fill='none' stroke-linecap='round'/></svg>");background-repeat:no-repeat;background-position:right 9px center;}
 
   .footnote{text-align:center;font-size:11.5px;color:var(--faint);margin-top:24px;line-height:1.6;}
+
+  /* ── backup ── */
+  .nag{display:block;width:100%;margin-top:4px;padding:13px 16px;border:1px dashed var(--accent-soft);border-radius:14px;background:transparent;color:var(--accent);font-family:inherit;font-size:13.5px;font-weight:600;text-align:left;cursor:pointer;}
+  .nag:active{background:var(--track);}
+  .panel-body .sub{margin-top:16px;padding-top:12px;border-top:1px solid var(--line);color:var(--ink);font-weight:600;}
+  .btn-row{display:flex;gap:8px;margin-top:10px;}
+  .btn-sm{position:relative;flex:1;display:flex;align-items:center;justify-content:center;border:1px solid var(--line);background:var(--paper);color:var(--ink);border-radius:11px;padding:11px 8px;font-family:inherit;font-size:14px;font-weight:600;line-height:1.3;text-align:center;cursor:pointer;}
+  .btn-sm:active{background:var(--track);}
+  .btn-sm.primary{background:var(--accent);border-color:var(--accent);color:var(--paper);}
+  .file-in{position:absolute;width:1px;height:1px;opacity:0;pointer-events:none;}
+  .panel-body textarea{width:100%;min-height:90px;margin-top:10px;font-family:ui-monospace,Menlo,monospace;font-size:16px;color:var(--ink);background:var(--paper);border:1px solid var(--line);border-radius:10px;padding:10px;resize:vertical;}
+  .snap{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:8px 0;border-top:1px solid var(--line);color:var(--ink);}
+  .snap:first-child{border-top:none;}
+  .snap button{flex:0 0 auto;border:1px solid var(--line);background:transparent;color:var(--ink);border-radius:9px;padding:6px 10px;font-family:inherit;font-size:13px;cursor:pointer;}
+  .toast{position:fixed;left:50%;bottom:calc(env(safe-area-inset-bottom) + 24px);z-index:60;transform:translate(-50%,16px);width:max-content;max-width:calc(100% - 32px);background:var(--ink);color:var(--paper);padding:11px 16px;border-radius:12px;font-size:13.5px;line-height:1.5;text-align:center;opacity:0;pointer-events:none;transition:opacity .2s,transform .2s;}
+  .toast.show{opacity:1;transform:translate(-50%,0);}
 
   /* ── sheet ── */
   .backdrop{position:fixed;inset:0;background:rgba(20,18,12,.32);opacity:0;pointer-events:none;transition:opacity .25s;z-index:40;}
@@ -228,6 +244,8 @@
       </div>
     </section>
 
+    <button class="nag hidden" id="nag"></button>
+
     <div id="weeks"></div>
 
     <details class="panel">
@@ -241,6 +259,36 @@
           </select>
         </div>
         <p class="note">점심시간 <b style="color:var(--ink)">12–13시</b>와 겹치는 근무시간만큼 자동 공제됩니다. 예: 10–16시 근무 → 5시간, 8–12시 근무 → 4시간.</p>
+      </div>
+    </details>
+
+    <details class="panel" id="backupPanel">
+      <summary>백업 <span class="chev">›</span></summary>
+      <div class="panel-body">
+        <div class="row">
+          <span class="f">마지막 백업</span>
+          <span class="num" id="lastBackup">아직 없음</span>
+        </div>
+        <div class="btn-row">
+          <button class="btn-sm primary" id="exportBtn">파일로 내보내기</button>
+          <button class="btn-sm" id="copyBtn">복사하기</button>
+        </div>
+        <p class="note">기록은 이 기기의 홈 화면 앱 안에만 있어요. 정산 기간마다 한 번씩 내보내서 '파일' 앱이나 카톡 나와의 채팅에 보관해 두세요.</p>
+
+        <div class="sub">가져오기</div>
+        <div class="btn-row">
+          <label class="btn-sm">파일에서 가져오기<input type="file" id="importFile" class="file-in" accept=".json,.txt,application/json,text/plain"></label>
+          <button class="btn-sm" id="pasteBtn">붙여넣기</button>
+        </div>
+        <div id="pasteBox" class="hidden">
+          <textarea id="pasteText" placeholder="복사해 둔 백업 내용을 붙여넣으세요"></textarea>
+          <div class="btn-row"><button class="btn-sm primary" id="pasteApply">이 내용으로 가져오기</button></div>
+        </div>
+        <p class="note">가져오면 지금 기록이 백업 내용으로 바뀝니다. 바뀌기 전 기록은 아래 자동 사본에 남아요.</p>
+
+        <div class="sub">자동 사본</div>
+        <div id="snapList"></div>
+        <p class="note">앱이 업데이트된 뒤 처음 열릴 때, 그리고 가져오기·되돌리기 직전에 그때까지의 기록을 이 기기에 남겨 둡니다(최근 5개).</p>
       </div>
     </details>
 
@@ -263,7 +311,7 @@
       </div>
     </details>
 
-    <p class="footnote">입력 내용은 이 기기에 저장됩니다.<br>웹앱이라 사파리 공유 → "홈 화면에 추가"로 앱처럼 쓸 수 있어요.</p>
+    <p class="footnote">입력 내용은 이 기기에만 저장됩니다. 백업에서 파일로 보관할 수 있어요.<br>웹앱이라 사파리 공유 → "홈 화면에 추가"로 앱처럼 쓸 수 있어요.<br><span class="num" id="ver"></span></p>
   </main>
 </div>
 
@@ -323,6 +371,8 @@
   </div>
 </div>
 
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+
 <script>
 (function(){
   "use strict";
@@ -330,29 +380,35 @@
   const MS = 86400000;
   const TARGET = 80;
   const KEY = "coretime_v1";
+  const SNAP_KEY = KEY + "_snap";             // 자동 사본 [{at, why, ver, raw}]
+  const META_KEY = KEY + "_meta";             // { ver, lastExport }
+  const VERSION = "v2";                       // 배포할 때마다 올림 → 새 버전이 처음 열릴 때 직전 기록을 자동 사본으로 남김
   const DOW = ["일","월","화","수","목","금","토"];
 
   let state = { settings:{ lunch:true }, days:{} };
   let pIndex = 0;
   let editKey = null;
   let editType = "work";
+  let meta = {};
   const mem = {};
 
   // ── storage (artifact window.storage → localStorage → memory) ──
-  async function load(){
-    try{ if(window.storage){ const r = await window.storage.get(KEY); if(r && r.value) return JSON.parse(r.value); return null; } }catch(e){}
-    try{ const v = localStorage.getItem(KEY); return v ? JSON.parse(v) : null; }catch(e){}
-    return mem[KEY] ? JSON.parse(mem[KEY]) : null;
+  async function getRaw(k){
+    try{ if(window.storage){ const r = await window.storage.get(k); return (r && r.value) ? r.value : null; } }catch(e){}
+    try{ return localStorage.getItem(k); }catch(e){}
+    return mem[k] || null;
   }
-  async function save(){
-    const v = JSON.stringify(state);
-    try{ if(window.storage){ await window.storage.set(KEY, v); return; } }catch(e){}
-    try{ localStorage.setItem(KEY, v); return; }catch(e){}
-    mem[KEY] = v;
+  async function setRaw(k, v){
+    try{ if(window.storage){ await window.storage.set(k, v); return; } }catch(e){}
+    try{ localStorage.setItem(k, v); return; }catch(e){}
+    mem[k] = v;
   }
+  async function save(){ await setRaw(KEY, JSON.stringify(state)); }
+  async function saveMeta(){ await setRaw(META_KEY, JSON.stringify(meta)); }
 
   // ── date helpers ──
   function keyOf(d){ return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0"); }
+  function dateOf(k){ const p = k.split("-"); return new Date(+p[0], +p[1]-1, +p[2]); }
   function md(d){ return (d.getMonth()+1)+"/"+d.getDate(); }
   function pStart(i){ return new Date(ANCHOR.getTime() + i*14*MS); }
   function pDays(i){
@@ -540,7 +596,7 @@
     }
   }
 
-  function parseEditDate(){ const p = editKey.split("-"); return new Date(+p[0], +p[1]-1, +p[2]); }
+  function parseEditDate(){ return dateOf(editKey); }
 
   function openSheet(k, d){
     editKey = k;
@@ -581,6 +637,137 @@
     editKey = null;
   }
 
+  // ── backup (내보내기 · 가져오기 · 자동 사본) ──
+  const WHY = { update:"업데이트 전", import:"가져오기 전", restore:"되돌리기 전" };
+  let toastT = null;
+
+  function toast(msg){
+    const t = document.getElementById("toast");
+    t.textContent = msg;
+    t.classList.add("show");
+    clearTimeout(toastT);
+    toastT = setTimeout(() => t.classList.remove("show"), 2800);
+  }
+  function when(ts){ const d = new Date(ts); return md(d)+" "+String(d.getHours()).padStart(2,"0")+":"+String(d.getMinutes()).padStart(2,"0"); }
+  function daysAgo(ts){ const d = new Date(ts); d.setHours(0,0,0,0); return Math.round((new Date().setHours(0,0,0,0) - d.getTime())/MS); }
+
+  async function snaps(){ try{ return JSON.parse(await getRaw(SNAP_KEY) || "[]") || []; }catch(e){ return []; } }
+  async function snapshot(why, raw){
+    if(!raw) return;
+    const list = await snaps();
+    list.unshift({ at:Date.now(), why, ver:VERSION, raw });
+    const keep = list.slice(0, 5), upd = list.find(s => s.why === "update");
+    if(upd && !keep.includes(upd)) keep[keep.length-1] = upd; // 가장 최근 '업데이트 전' 사본은 밀려나지 않게
+    await setRaw(SNAP_KEY, JSON.stringify(keep));
+  }
+
+  function backupText(){ return JSON.stringify({ app:"coretime", ver:VERSION, exportedAt:new Date().toISOString(), data:state }); }
+
+  function parseBackup(text){
+    text = String(text || "");
+    const a = text.indexOf("{"), b = text.lastIndexOf("}");
+    let o = JSON.parse(a >= 0 && b > a ? text.slice(a, b+1) : text); // 카톡 등에 붙여넣은 앞뒤 글자는 무시
+    if(o && o.data && typeof o.data === "object") o = o.data;           // 내보낸 파일 { app, ver, exportedAt, data }
+    if(!o || !o.days || typeof o.days !== "object" || Array.isArray(o.days)) throw new Error("not a backup");
+    const days = {};
+    Object.keys(o.days).forEach(k => { const r = o.days[k]; if(/^\d{4}-\d{2}-\d{2}$/.test(k) && r && typeof r === "object") days[k] = r; });
+    const sv = o.settings ? o.settings.lunch : undefined;
+    return { settings:{ lunch:(typeof sv === "boolean") ? sv : true }, days };
+  }
+
+  async function markExported(){ meta.lastExport = Date.now(); await saveMeta(); await renderBackup(); }
+
+  async function exportFile(){
+    const name = "근태백업_"+keyOf(new Date()).replace(/-/g,"")+".json";
+    const file = new File([backupText()], name, { type:"application/json" });
+    if(navigator.canShare && navigator.canShare({ files:[file] })){
+      try{ await navigator.share({ files:[file] }); } // 아이폰: 공유 시트 → '파일에 저장' 등
+      catch(e){ if(!e || e.name !== "AbortError") toast("내보내지 못했어요. 복사하기를 써 주세요"); return; }
+    } else {
+      const a = document.createElement("a");
+      a.href = URL.createObjectURL(file);
+      a.download = name;
+      document.body.appendChild(a); a.click(); a.remove();
+      setTimeout(() => URL.revokeObjectURL(a.href), 5000);
+    }
+    await markExported();
+    toast("백업 파일을 내보냈어요");
+  }
+
+  async function copyBackup(){
+    const text = backupText();
+    let ok = false;
+    try{ await navigator.clipboard.writeText(text); ok = true; }catch(e){}
+    if(!ok){
+      const ta = document.createElement("textarea");
+      ta.value = text; ta.setAttribute("readonly", ""); ta.style.position = "fixed"; ta.style.opacity = "0";
+      document.body.appendChild(ta); ta.select(); ta.setSelectionRange(0, text.length);
+      try{ ok = document.execCommand("copy"); }catch(e){}
+      ta.remove();
+    }
+    if(!ok){ toast("복사하지 못했어요"); return; }
+    await markExported();
+    toast("복사했어요. 카톡 나와의 채팅이나 메모에 붙여넣어 두세요");
+  }
+
+  async function applyData(data, why){
+    await snapshot(why, await getRaw(KEY)); // 바꾸기 직전 기록을 먼저 남김
+    state.days = data.days;
+    state.settings = data.settings;
+    await save();
+    document.getElementById("lunchSel").value = state.settings.lunch ? "1" : "0";
+    render();
+    await renderBackup();
+  }
+
+  async function importText(text){
+    let data;
+    try{ data = parseBackup(text); }catch(e){ toast("백업 내용을 읽지 못했어요"); return false; }
+    const ks = Object.keys(data.days).sort(), n = ks.length;
+    const range = n ? " ("+md(dateOf(ks[0]))+"–"+md(dateOf(ks[n-1]))+")" : "";
+    if(!confirm("백업의 기록 "+n+"일"+range+"로 바꿀까요?\n지금 기록 "+Object.keys(state.days).length+"일은 자동 사본으로 남겨 둡니다.")) return false;
+    await applyData(data, "import");
+    toast("기록 "+n+"일을 가져왔어요");
+    return true;
+  }
+
+  async function restoreSnap(s){
+    let data;
+    try{ data = parseBackup(s.raw); }catch(e){ toast("이 사본은 읽을 수 없어요"); return; }
+    if(!confirm(when(s.at)+" "+(WHY[s.why] || "")+" 사본("+Object.keys(data.days).length+"일)으로 되돌릴까요?\n지금 기록은 자동 사본으로 남겨 둡니다.")) return;
+    await applyData(data, "restore");
+    toast("되돌렸어요");
+  }
+
+  async function renderBackup(){
+    const age = meta.lastExport ? daysAgo(meta.lastExport) : null;
+    document.getElementById("lastBackup").textContent =
+      age === null ? "아직 없음" : md(new Date(meta.lastExport))+" ("+(age === 0 ? "오늘" : age+"일 전")+")";
+    const nag = document.getElementById("nag");
+    if(Object.keys(state.days).length && (age === null || age >= 14)){ // 기록이 있는데 2주 넘게 백업하지 않았으면 안내
+      nag.textContent = (age === null ? "아직 백업하지 않았어요" : "백업한 지 "+age+"일 지났어요")+" · 지금 백업하기 ›";
+      nag.classList.remove("hidden");
+    } else {
+      nag.classList.add("hidden");
+    }
+
+    const list = await snaps(), wrap = document.getElementById("snapList");
+    wrap.innerHTML = "";
+    if(!list.length){ wrap.innerHTML = '<div class="snap"><span>아직 없음</span></div>'; return; }
+    list.forEach(s => {
+      let n = "?";
+      try{ n = Object.keys(parseBackup(s.raw).days).length; }catch(e){}
+      const row = document.createElement("div");
+      row.className = "snap";
+      row.innerHTML = '<span class="num">'+when(s.at)+' · '+(WHY[s.why] || "")+' · '+n+'일</span>';
+      const b = document.createElement("button");
+      b.textContent = "되돌리기";
+      b.addEventListener("click", () => restoreSnap(s));
+      row.appendChild(b);
+      wrap.appendChild(row);
+    });
+  }
+
   // ── events ──
   document.getElementById("prev").addEventListener("click", () => { if(pIndex>0){ pIndex--; render(); } });
   document.getElementById("next").addEventListener("click", () => { pIndex++; render(); });
@@ -614,14 +801,38 @@
     render();
   });
 
+  document.getElementById("nag").addEventListener("click", () => {
+    const p = document.getElementById("backupPanel");
+    p.open = true;
+    p.scrollIntoView({ behavior:"smooth", block:"start" });
+  });
+  document.getElementById("exportBtn").addEventListener("click", () => exportFile());
+  document.getElementById("copyBtn").addEventListener("click", () => copyBackup());
+  document.getElementById("importFile").addEventListener("change", async (e) => {
+    const f = e.target.files && e.target.files[0];
+    if(f) await importText(await f.text());
+    e.target.value = "";
+  });
+  document.getElementById("pasteBtn").addEventListener("click", () => {
+    document.getElementById("pasteBox").classList.toggle("hidden");
+  });
+  document.getElementById("pasteApply").addEventListener("click", async () => {
+    const ta = document.getElementById("pasteText");
+    if(await importText(ta.value)){ ta.value = ""; document.getElementById("pasteBox").classList.add("hidden"); }
+  });
+
   // 앱을 다시 열거나 백그라운드에서 돌아오면 오늘 기준 회차로 자동 이동
   document.addEventListener("visibilitychange", () => {
-    if(!document.hidden && !editKey){ pIndex = Math.max(0, todayIndex()); render(); }
+    if(!document.hidden && !editKey){ pIndex = Math.max(0, todayIndex()); render(); renderBackup(); }
   });
 
   // ── init ──
   (async function init(){
-    const loaded = await load();
+    try{ meta = JSON.parse(await getRaw(META_KEY) || "{}") || {}; }catch(e){ meta = {}; }
+    const raw = await getRaw(KEY);
+    if(meta.ver !== VERSION){ await snapshot("update", raw); meta.ver = VERSION; await saveMeta(); } // 새 버전 첫 실행: 직전 기록 사본
+    let loaded = null;
+    try{ loaded = raw ? JSON.parse(raw) : null; }catch(e){}
     if(loaded){
       state.days = loaded.days || {};
       const sv = loaded.settings ? loaded.settings.lunch : undefined;
@@ -631,7 +842,9 @@
     }
     document.getElementById("lunchSel").value = state.settings.lunch ? "1" : "0";
     pIndex = Math.max(0, todayIndex());
+    document.getElementById("ver").textContent = VERSION;
     render();
+    renderBackup();
   })();
 })();
 </script>
