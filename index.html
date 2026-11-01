@@ -281,7 +281,7 @@
           <button class="btn-sm primary" id="exportBtn">파일로 내보내기</button>
           <button class="btn-sm" id="copyBtn">복사하기</button>
         </div>
-        <p class="note">기록은 이 기기의 홈 화면 앱 안에만 있어요. 정산 기간마다 한 번씩 내보내서 '파일' 앱이나 카톡 나와의 채팅에 보관해 두세요.</p>
+        <p class="note">기록은 이 기기의 홈 화면 앱 안에만 있어요. 정산 기간마다 한 번씩 '파일로 내보내기' → '파일에 저장'으로 보관해 두세요. 복사하기는 파일 공유가 안 될 때만 쓰세요(카톡에 붙여 넣은 글은 잘려서 못 쓸 수 있어요).</p>
 
         <div class="sub">가져오기</div>
         <div class="btn-row">
@@ -403,7 +403,7 @@
   const KEY = "coretime_v1";
   const SNAP_KEY = KEY + "_snap";             // 자동 사본 [{at, why, ver, raw}]
   const META_KEY = KEY + "_meta";             // { ver, lastExport }
-  const VERSION = "v3";                       // 배포할 때마다 올림 → 새 버전이 처음 열릴 때 직전 기록을 자동 사본으로 남김
+  const VERSION = "v4";                       // 배포할 때마다 올림 → 새 버전이 처음 열릴 때 직전 기록을 자동 사본으로 남김
   const DOW = ["일","월","화","수","목","금","토"];
 
   let state = { settings:{ lunch:true }, days:{} };
@@ -731,12 +731,12 @@
   const WHY = { update:"업데이트 전", import:"가져오기 전", restore:"되돌리기 전" };
   let toastT = null;
 
-  function toast(msg){
+  function toast(msg, ms){
     const t = document.getElementById("toast");
     t.textContent = msg;
     t.classList.add("show");
     clearTimeout(toastT);
-    toastT = setTimeout(() => t.classList.remove("show"), 2800);
+    toastT = setTimeout(() => t.classList.remove("show"), ms || 2800);
   }
   function when(ts){ const d = new Date(ts); return md(d)+" "+String(d.getHours()).padStart(2,"0")+":"+String(d.getMinutes()).padStart(2,"0"); }
   function daysAgo(ts){ const d = new Date(ts); d.setHours(0,0,0,0); return Math.round((new Date().setHours(0,0,0,0) - d.getTime())/MS); }
@@ -796,8 +796,8 @@
       ta.remove();
     }
     if(!ok){ toast("복사하지 못했어요"); return; }
-    await markExported();
-    toast("복사했어요. 카톡 나와의 채팅이나 메모에 붙여넣어 두세요");
+    // 붙여 넣은 글은 잘릴 수 있어 '마지막 백업'으로 치지 않음 (파일 내보내기만 백업으로 기록)
+    toast("복사했어요. 카톡은 긴 글이 잘릴 수 있으니 메모 앱에 붙여 넣으세요. 가장 안전한 건 파일로 내보내기예요", 5000);
   }
 
   async function applyData(data, why){
@@ -810,9 +810,13 @@
     await renderBackup();
   }
 
-  async function importText(text){
+  async function importText(text, pasted){
     let data;
-    try{ data = parseBackup(text); }catch(e){ toast("백업 내용을 읽지 못했어요"); return false; }
+    try{ data = parseBackup(text); }
+    catch(e){
+      toast(pasted ? "백업 내용을 읽지 못했어요. 글이 중간에 잘렸을 수 있으니 '파일에서 가져오기'를 써 주세요" : "백업 파일을 읽지 못했어요", pasted ? 5000 : 2800);
+      return false;
+    }
     const ks = Object.keys(data.days).sort(), n = ks.length;
     const range = n ? " ("+md(dateOf(ks[0]))+"–"+md(dateOf(ks[n-1]))+")" : "";
     if(!confirm("백업의 기록 "+n+"일"+range+"로 바꿀까요?\n지금 기록 "+Object.keys(state.days).length+"일은 자동 사본으로 남겨 둡니다.")) return false;
@@ -912,7 +916,7 @@
   });
   document.getElementById("pasteApply").addEventListener("click", async () => {
     const ta = document.getElementById("pasteText");
-    if(await importText(ta.value)){ ta.value = ""; document.getElementById("pasteBox").classList.add("hidden"); }
+    if(await importText(ta.value, true)){ ta.value = ""; document.getElementById("pasteBox").classList.add("hidden"); }
   });
 
   // 앱을 다시 열거나 백그라운드에서 돌아오면 오늘 기준 회차로 자동 이동
